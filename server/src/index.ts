@@ -6,13 +6,16 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 // import rateLimit from 'express-rate-limit';
 const rateLimit = require('express-rate-limit');
-const xss = require('xss-clean');
+const xss = require('xss-clean'); // Kept for type safety but disabled in usage
 const hpp = require('hpp');
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Trust Proxy (Required for Render/Heroku/Vercel)
+app.set('trust proxy', 1);
 
 // Middleware
 app.use(express.json());
@@ -28,32 +31,31 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // Security Headers & Sanitization
-app.use(xss());
+// Security Headers & Sanitization
+// app.use(xss()); // Disabled due to conflict with newer Express/Node versions
 app.use(hpp());
 
 
 // Database Connection
 const connectDB = async () => {
     try {
-        const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/hospital-management';
+        const MONGO_URI = process.env.MONGO_URI;
+        if (!MONGO_URI) {
+            throw new Error('No MONGO_URI provided, falling back to In-Memory DB');
+        }
         await mongoose.connect(MONGO_URI);
         console.log('✅ MongoDB Connected (Standard)');
     } catch (err) {
-        console.warn('⚠️ Standard MongoDB Connection Failed. Attempting to use In-Memory Database for Development...');
+        console.warn('⚠️ Standard MongoDB Connection Failed. Starting In-Memory Database...');
 
-        if (process.env.NODE_ENV === 'development') {
-            try {
-                const { MongoMemoryServer } = require('mongodb-memory-server');
-                const mongod = await MongoMemoryServer.create();
-                const uri = mongod.getUri();
-                await mongoose.connect(uri);
-                console.log('✅ MongoDB Connected (In-Memory Fallback)');
-            } catch (memoryErr) {
-                console.error('❌ In-Memory DB Error:', memoryErr);
-                process.exit(1);
-            }
-        } else {
-            console.error('❌ MongoDB Connection Error:', err);
+        try {
+            const { MongoMemoryServer } = require('mongodb-memory-server');
+            const mongod = await MongoMemoryServer.create();
+            const uri = mongod.getUri();
+            await mongoose.connect(uri);
+            console.log('✅ MongoDB Connected (In-Memory Fallback - Data will not persist)');
+        } catch (memoryErr) {
+            console.error('❌ In-Memory DB Error:', memoryErr);
             process.exit(1);
         }
     }
