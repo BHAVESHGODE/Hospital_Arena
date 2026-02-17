@@ -4,9 +4,10 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
-import rateLimit from 'express-rate-limit';
-import xss from 'xss-clean';
-import hpp from 'hpp';
+// import rateLimit from 'express-rate-limit';
+const rateLimit = require('express-rate-limit');
+const xss = require('xss-clean');
+const hpp = require('hpp');
 
 dotenv.config();
 
